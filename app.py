@@ -34,8 +34,7 @@ def subir_csv():
         return jsonify({"error": "Nombre de archivo vacío"}), 400
 
     try:
-        # Leer por chunks para evitar consumir demasiada memoria
-        chunk_size = 100000  # Lee 100,000 filas por vez
+        chunk_size = 100000
         suma = {}
         suma_cuadrados = {}
         conteo = {}
@@ -54,12 +53,16 @@ def subir_csv():
             for col in chunk.columns:
                 nulos[col] = nulos.get(col, 0) + chunk[col].isnull().sum()
 
-        # Calcular estadísticas sin cargar todo el archivo en RAM
         media = {col: suma[col] / conteo[col] for col in suma}
         std = {
             col: np.sqrt((suma_cuadrados[col] / conteo[col]) - (media[col] ** 2))
             for col in suma
         }
+
+        # Convertir a tipos JSON-serializables
+        media = {col: float(media[col]) for col in media}
+        std = {col: float(std[col]) for col in std}
+        nulos = {col: int(nulos[col]) for col in nulos}
 
         resumen = {
             "columnas": columnas,
