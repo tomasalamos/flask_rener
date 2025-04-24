@@ -5,6 +5,8 @@ import os
 
 app = Flask(__name__)
 
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500 MB
+
 @app.route("/")
 def index():
     return render_template("index.html")
