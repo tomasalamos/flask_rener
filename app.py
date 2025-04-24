@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify, render_template
 import pandas as pd
 import numpy as np
 import os
-import csv
 
 app = Flask(__name__)
 
@@ -35,29 +34,42 @@ def subir_csv():
         return jsonify({"error": "Nombre de archivo vacío"}), 400
 
     try:
-        # Leer archivo CSV en modo streaming línea por línea
-        csv_reader = csv.DictReader((line.decode('utf-8') for line in file.stream))
-        filas = []
+        # Leer por chunks para evitar consumir demasiada memoria
+        chunk_size = 100000  # Lee 100,000 filas por vez
+        suma = {}
+        suma_cuadrados = {}
+        conteo = {}
+        nulos = {}
+        columnas = None
 
-        for i, row in enumerate(csv_reader):
-            filas.append(row)
-            if i % 100000 == 0:
-                print(f"Leyendo fila {i}")  # Debug opcional
+        for chunk in pd.read_csv(file, chunksize=chunk_size):
+            if columnas is None:
+                columnas = list(chunk.columns)
 
-        df = pd.DataFrame(filas)
+            for col in chunk.select_dtypes(include=np.number).columns:
+                suma[col] = suma.get(col, 0) + chunk[col].sum()
+                suma_cuadrados[col] = suma_cuadrados.get(col, 0) + (chunk[col] ** 2).sum()
+                conteo[col] = conteo.get(col, 0) + chunk[col].count()
 
-        # Intentar convertir columnas numéricas
-        for col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='ignore')
+            for col in chunk.columns:
+                nulos[col] = nulos.get(col, 0) + chunk[col].isnull().sum()
+
+        # Calcular estadísticas sin cargar todo el archivo en RAM
+        media = {col: suma[col] / conteo[col] for col in suma}
+        std = {
+            col: np.sqrt((suma_cuadrados[col] / conteo[col]) - (media[col] ** 2))
+            for col in suma
+        }
 
         resumen = {
-            "columnas": list(df.columns),
-            "media": df.mean(numeric_only=True).to_dict(),
-            "desviacion_estandar": df.std(numeric_only=True).to_dict(),
-            "valores_nulos": df.isnull().sum().to_dict()
+            "columnas": columnas,
+            "media": media,
+            "desviacion_estandar": std,
+            "valores_nulos": nulos
         }
 
         return jsonify(resumen)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
