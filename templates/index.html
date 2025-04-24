@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sube tu CSV</title>
+</head>
+<body>
+    <h1>Sube tu archivo CSV 📊</h1>
+    <form id="csv-form" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".csv" required />
+        <button type="submit">Enviar</button>
+    </form>
+    <pre id="resultado"></pre>
+
+    <script>
+        document.getElementById("csv-form").onsubmit = async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const res = await fetch("/subir_csv", {
+                method: "POST",
+                body: formData
+            });
+            const data = await res.json();
+            document.getElementById("resultado").textContent = JSON.stringify(data, null, 2);
+        };
+    </script>
+</body>
+</html>
