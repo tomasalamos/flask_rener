@@ -1,0 +1,3 @@
+# Ignorar carpeta uploads y cualquier archivo CSV generado
+uploads/
+*.csv
