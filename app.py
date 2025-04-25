@@ -1,13 +1,9 @@
 from flask import Flask, render_template, request, send_file
 import pandas as pd
-import os
+import io
 import uuid
 
 app = Flask(__name__)
-UPLOAD_FOLDER = 'uploads'
-RESULT_FOLDER = 'resultados'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(RESULT_FOLDER, exist_ok=True)
 
 @app.route('/')
 def index():
@@ -22,23 +18,13 @@ def subir_csv():
     if archivo.filename == '':
         return "Nombre de archivo vacío", 400
 
-    # Guardamos el archivo temporalmente
-    temp_filename = f"{uuid.uuid4().hex}.csv"
-    temp_path = os.path.join(UPLOAD_FOLDER, temp_filename)
-    archivo.save(temp_path)
-
     try:
-        # Intentamos leer el archivo CSV
-        df = pd.read_csv(temp_path, sep=',', encoding='utf-8', on_bad_lines='skip')
-
-        # Verificamos las primeras filas para diagnóstico
-        print("Primeras filas leídas:")
-        print(df.head())  # Muestra las primeras filas para revisar
+        # Leemos el archivo directamente en memoria (sin guardarlo en el servidor)
+        df = pd.read_csv(archivo, sep=',', encoding='utf-8', on_bad_lines='skip')
 
         # Verificamos si 'date' existe y la eliminamos si está presente
         if 'date' in df.columns:
             df = df.drop(columns=['date'])
-            print("Columna 'date' eliminada")
 
         # Convertimos las columnas a valores numéricos (forzando NaN donde no sea posible)
         df = df.apply(pd.to_numeric, errors='coerce')
@@ -55,20 +41,22 @@ def subir_csv():
         resumen.reset_index(inplace=True)
         resumen.columns = ['columna', 'media', 'desviacion_estandar', 'valores_nulos']
 
-        # Guardamos el archivo de resultados
-        resultado_filename = f"resumen_{uuid.uuid4().hex}.csv"
-        resultado_path = os.path.join(RESULT_FOLDER, resultado_filename)
-        resumen.to_csv(resultado_path, index=False)
+        # Crear un buffer en memoria para el CSV de resultados
+        resultado_buffer = io.BytesIO()
+        resumen.to_csv(resultado_buffer, index=False)
+        resultado_buffer.seek(0)
 
         # Enviamos el archivo generado como descarga
-        return send_file(resultado_path, as_attachment=True)
+        return send_file(
+            resultado_buffer, 
+            as_attachment=True, 
+            download_name="resumen_resultado.csv",  # Nombre del archivo para descargar
+            mimetype="text/csv"  # Tipo MIME
+        )
 
     except Exception as e:
-        print(f"Ocurrió un error al procesar el archivo: {e}")
         return f"Ocurrió un error al procesar el archivo: {e}", 500
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
 
