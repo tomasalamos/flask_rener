@@ -1,90 +1,17 @@
+
+
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Subir CSV</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-        }
-        .progress-container {
-            width: 100%;
-            background-color: #f3f3f3;
-            border-radius: 10px;
-            margin-top: 10px;
-        }
-        .progress-bar {
-            width: 0%;
-            height: 20px;
-            background-color: #4caf50;
-            border-radius: 10px;
-            transition: width 0.3s;
-        }
-        #resultado {
-            white-space: pre-wrap;
-            margin-top: 20px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Subir CSV</title>
 </head>
 <body>
-    <h1>Subir archivo CSV</h1>
-    <form id="csvForm">
-        <input type="file" id="fileInput" name="file" accept=".csv" required>
-        <button type="submit">Enviar</button>
-    </form>
-
-    <div class="progress-container">
-        <div id="progressBar" class="progress-bar"></div>
-    </div>
-
-    <div id="resultado"></div>
-
-    <script>
-        const form = document.getElementById('csvForm');
-        const progressBar = document.getElementById('progressBar');
-        const resultado = document.getElementById('resultado');
-
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-
-            if (!file) {
-                alert("Por favor, selecciona un archivo.");
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', '/subir_csv', true);
-
-            xhr.upload.onprogress = function(e) {
-                if (e.lengthComputable) {
-                    const percent = (e.loaded / e.total) * 100;
-                    progressBar.style.width = percent + '%';
-                }
-            };
-
-            xhr.onload = function() {
-                if (xhr.status === 200) {
-                    resultado.textContent = JSON.stringify(JSON.parse(xhr.responseText), null, 2);
-                } else {
-                    resultado.textContent = "Error: " + xhr.responseText;
-                }
-                progressBar.style.width = '0%';
-            };
-
-            xhr.onerror = function() {
-                resultado.textContent = "Error al subir el archivo.";
-                progressBar.style.width = '0%';
-            };
-
-            xhr.send(formData);
-        });
-    </script>
+  <h2>Sube tu archivo CSV</h2>
+  <form method="POST" action="/subir_csv" enctype="multipart/form-data">
+    <input type="file" name="archivo" accept=".csv" required>
+    <button type="submit">Procesar</button>
+  </form>
 </body>
 </html>
