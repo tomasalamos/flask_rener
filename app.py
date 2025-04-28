@@ -3,9 +3,16 @@ import pandas as pd
 import io
 import os
 import uuid
+from tempfile import TemporaryFile
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 300 * 1024 * 1024  # 300 MB máximo permitido
+app.config['MAX_CONTENT_LENGTH'] = 300 * 1024 * 1024  # 300 MB permitido
+
+# Usar almacenamiento temporal de archivo para uploads grandes
+def stream_factory(total_content_length, filename, content_type, content_length=None):
+    return TemporaryFile()
+
+app.request_class.stream_factory = stream_factory
 
 @app.route('/')
 def index():
@@ -25,17 +32,15 @@ def subir_csv():
         temp_filename = f"/tmp/{uuid.uuid4().hex}.csv"
         archivo.save(temp_filename)
 
-        # Leer el CSV en fragmentos para manejar archivos grandes
+        # Leer el CSV por fragmentos (chunks)
         chunks = []
         for chunk in pd.read_csv(temp_filename, sep=',', encoding='utf-8', on_bad_lines='skip', chunksize=50000):
             chunks.append(chunk)
 
         df = pd.concat(chunks, ignore_index=True)
 
-        # Eliminar el archivo temporal
         os.remove(temp_filename)
 
-        # Procesar los datos
         if 'date' in df.columns:
             df = df.drop(columns=['date'])
 
@@ -50,7 +55,6 @@ def subir_csv():
         resumen.reset_index(inplace=True)
         resumen.columns = ['columna', 'media', 'desviacion_estandar', 'valores_nulos']
 
-        # Preparar el archivo de salida
         resultado_buffer = io.BytesIO()
         resumen.to_csv(resultado_buffer, index=False)
         resultado_buffer.seek(0)
@@ -67,4 +71,3 @@ def subir_csv():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
