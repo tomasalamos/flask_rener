@@ -4,6 +4,8 @@ import io
 import os
 import uuid
 from tempfile import TemporaryFile
+from werkzeug.datastructures import FileStorage
+from shutil import copyfileobj
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 300 * 1024 * 1024  # 300 MB permitido
@@ -13,6 +15,16 @@ def stream_factory(total_content_length, filename, content_type, content_length=
     return TemporaryFile()
 
 app.request_class.stream_factory = stream_factory
+
+# Sobrescribir la forma en que se manejan los uploads grandes
+class LargeFileStorage(FileStorage):
+    def save(self, dst, buffer_size=16384):
+        # usa buffer de 16KB para evitar consumir toda la RAM
+        if isinstance(dst, str):
+            dst = open(dst, 'wb')
+        copyfileobj(self.stream, dst, length=buffer_size)
+
+app.request_class = LargeFileStorage
 
 @app.route('/')
 def index():
